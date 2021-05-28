@@ -41,6 +41,8 @@ def eliza_cleaning(datas):
     datas.drop(columns =['source', 'url'], inplace=True)
     prices = datas.pop('price')
     datas.insert(0, 'price', prices)
+    type_of_property = datas.pop('type_of_property')
+    datas['type_of_property'] = type_of_property
     datas = datas[((datas['price']<3*10**7) & (datas['price']>2500)) | (datas.price.isnull())]
     datas = datas[(datas['number_of_rooms']<100) | (datas.number_of_rooms.isnull())]
     datas = datas[(datas['area']<755000) | (datas.area.isnull())]
@@ -49,10 +51,16 @@ def eliza_cleaning(datas):
     datas = datas[(datas['surface_of_the_land']<100000) | (datas.surface_of_the_land.isnull())]
     datas = datas[(datas['number_of_facades']<5) | (datas.number_of_facades.isnull())]
     datas.drop(columns=['surface_area_of_the_plot_of_land', 'type_of_sale', 'subtype_of_property'], inplace=True)
-    datas.drop(columns=['subtype_of_property'], inplace=True)
     datas['garden_area'] = datas['garden_area'].where(datas['garden'] == 1, other=datas['garden'])
     datas['terrace_area'] = datas['terrace_area'].where(datas['terrace'] == 1, other=datas['terrace'])
     return datas
 
 
-
+def eliza_fillna(datas):
+    datas['state_of_the_building'].fillna(value='unkown', inplace=True)
+    datas['type_of_property'].fillna(value='other', inplace=True)
+    zeros = datas.fillna(value=0)
+    mask = (datas.type_of_property=='apartment')  & (datas.surface_of_the_land.isnull()) & (datas.garden_area==0)
+    datas['surface_of_the_land'] = zeros.where(mask, other=datas).surface_of_the_land
+    datas['furnished'].fillna(value=0, inplace=True)
+    return datas
