@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression, Ridge, ElasticNetCV, LassoCV, RidgeCV
+from sklearn.linear_model import LinearRegression, Ridge, ElasticNetCV, LassoCV, RidgeCV, Lasso, SGDRegressor
 from data_cleaner import eliza_cleaning, eliza_fillna
 from sklearn.model_selection import train_test_split, KFold, cross_val_score
 from sklearn.compose import ColumnTransformer
@@ -10,67 +11,86 @@ from sklearn.pipeline import Pipeline, FeatureUnion, make_pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, Normalizer, StandardScaler, PolynomialFeatures
 from sklearn.ensemble import RandomForestClassifier
 import xgboost as xgb
+from sklearn.metrics import explained_variance_score as evs # evaluation metric
+from sklearn.metrics import r2_score as r2 # evaluation metric
 from sklearn.metrics import mean_squared_error
+from xgboost import XGBRegressor
+from sklearn.metrics import mean_absolute_error
+from pickle import dump
+
+
 
 raw_datas = pd.read_csv('https://raw.githubusercontent.com/JulienAlardot/challenge-collecting-data/main/Data/database.csv')
 datas = eliza_cleaning(raw_datas)
 datas = eliza_fillna(datas)
-#datas.drop(columns=['locality'], inplace=True)
-house = datas[datas['type_of_property']=='house'].copy()
-appart = datas[datas['type_of_property']=='apartment'].copy()
+
+median = pd.read_csv('median.csv')
+post = pd.read_csv('post_codes.csv', sep=';')
+median['Gemeente'] = median['Gemeente'].str.lower()
+post['Commune Principale'] = post['Commune principale'].str.lower()
+median_with_post = median.merge(post[['Code postal', 'Commune Principale']], how='left', left_on='Gemeente', right_on='Commune Principale')
+median_with_post = median_with_post.groupby('Gemeente').median()
+median_with_post['Mediaanprijs 2020'].fillna(median_with_post['Mediaanprijs 2019'], inplace=True)
+median_with_post['Mediaanprijs 2020'].fillna(median_with_post['Mediaanprijs 2018'], inplace=True)
+median_with_post.sort_values(by='Code postal', inplace=True)
+median_with_post.fillna(method='bfill', inplace=True)
+median_with_post.reset_index(inplace=True)
+median = median.merge(median_with_post[['Gemeente', 'Mediaanprijs 2020']], on='Gemeente')
+median_with_post = median.merge(post[['Code postal', 'Commune Principale']], how='left', left_on='Gemeente', right_on='Commune Principale')
+median_prices = median_with_post[['Code postal', 'Mediaanprijs 2020_y']]
+median_prices.columns = ['postal_code', 'median_price']
+median_prices = median_prices.groupby('postal_code').mean()
+median_prices.reset_index(inplace=True)
+median_prices['postal_code'] = median_prices['postal_code'].astype('int64')
+datas = datas.merge(median_prices, how='left', left_on='locality', right_on='postal_code')
+datas.drop('postal_code', inplace=True, axis=1)
+datas.sort_values(by='locality', ascending=False, inplace=True)
+datas['median_price'].fillna(method='ffill', inplace=True)
+datas.sort_index(inplace=True)
+col = datas.columns
+col = [col[0]]+[col[-1]]+list(col[1:-1])
+datas = datas[col]
+
 y = datas.pop('price')
 X = datas
-house_y = house.pop('price')
-house_x = house
-appart_y = appart.pop('price')
-appart_x = appart
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2)
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2)
 
 
-fillna = ColumnTransformer(
-        [ ('imp', KNNImputer(n_neighbors=2, weights="uniform"), list(range(1,12)))],
-         remainder='passthrough')
 fillna = ColumnTransformer(
         [('imp_col1', SimpleImputer(strategy='mean'), ['area', 'terrace_area', 'garden_area', 
                                                       'surface_of_the_land']),
          ('imp_col2', SimpleImputer(strategy='median'), ['number_of_rooms', 'number_of_facades']),
         ],remainder='passthrough')
+
 enc = ColumnTransformer(
         [
          ('enc', OneHotEncoder(sparse = False, drop ='first'), [-4, -3,-2,-1]),
-         #('enc2', OneHotEncoder(sparse = False, handle_unknown='ignore'), [-7])
         ], remainder='passthrough')
 
 
-model = RandomForestClassifier(n_estimators=500, criterion='gini', max_depth=20, min_samples_leaf=10, 
-                               n_jobs=-1, warm_start=True)
-#model = ElasticNetCV(max_iter=1e7, alphas=e_alphas, cv=kfolds, l1_ratio=e_l1ratio)
-
-#pipe = make_pipeline(fillna, enc, Normalizer())
-#pipe.fit(X_train)
+pipe = make_pipeline(fillna, enc, StandardScaler())
+pipe.fit(X)
+X_train = pipe.transform(X_train)
+X_val = pipe.transform(X_val)
 
 
-#xg_reg = xgb.XGBRegressor(objective ='reg:squarederror', colsample_bytree = 0.3, learning_rate = 0.1,
-#                max_depth = 5, alpha = 10, n_estimators = 10)
-#xg_reg.fit(pipe.transform(X_train),y_train)
-#preds = xg_reg.predict(pipe.transform(X_val))
-#rmse = np.sqrt(mean_squared_error(y_val, preds))
-#print("RMSE: %f" % (rmse))
 
+my_XGB_model = XGBRegressor(n_estimators=1000, learning_rate=0.05)
+my_XGB_model.fit(X_train, np.log(y_train), early_stopping_rounds=5, 
+             eval_set=[(X_val, np.log(y_val))], verbose=False)
 
-alphas_alt = [14.5, 14.6, 14.7, 14.8, 14.9, 15, 15.1, 15.2, 15.3, 15.4, 15.5]
-alphas2 = [5e-05, 0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008]
-e_alphas = [0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007]
-e_l1ratio = [0.8, 0.85, 0.9, 0.95, 0.99, 1]
-kfolds = KFold(n_splits=10, shuffle=True, random_state=42)
-model = ElasticNetCV(max_iter=1e7, alphas=e_alphas, cv=kfolds, l1_ratio=e_l1ratio)
-model = LinearRegression()
-
-pipe = make_pipeline(fillna, enc, Normalizer(), PolynomialFeatures(2), model )
-pipe.fit(X_train, y_train)
-preds = pipe.predict(X_val)
-rmse = np.sqrt(mean_squared_error(y_val, preds))
+X=pipe.transform(X)  
+XGB_predictions = my_XGB_model.predict(X)
+XGB_predictions = np.exp(XGB_predictions)
+XGB_mult_mae = mean_absolute_error(XGB_predictions, y)
+print("Validation MAE for multi-pass XGBoost Model : " + str(XGB_mult_mae))
+              
+  
+preds = my_XGB_model.predict(X)
+rmse = np.sqrt(mean_squared_error( y, np.exp(preds)))
 print("RMSE: %f" % (rmse))
-print(pipe.score(X_val, y_val))
+print("R2 score: ", my_XGB_model.score(X,  np.log(y)))
+
+dump(pipe, open('preprocessor.pkl', 'wb'))
+my_XGB_model.save_model("model.json")
