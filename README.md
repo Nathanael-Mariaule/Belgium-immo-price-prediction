@@ -28,6 +28,6 @@ Used to get the median price for housing in each Belgian commune
 
 ## 3/ Improvements:
 Due to lack of time, the following steps remain to do
--More tuning on the hyperparameters for the model.
+-test Feature engineering to improve the score of the model.
 -comments the python code and jupyter notebooks
 -deployment of the model

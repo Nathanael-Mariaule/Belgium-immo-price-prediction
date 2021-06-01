@@ -44,12 +44,12 @@ def eliza_cleaning(datas):
     type_of_property = datas.pop('type_of_property')
     datas['type_of_property'] = type_of_property
     datas = datas[((datas['price']<3*10**7) & (datas['price']>2500)) | (datas.price.isnull())]
-    datas = datas[(datas['number_of_rooms']<100) | (datas.number_of_rooms.isnull())]
-    datas = datas[(datas['area']<755000) | (datas.area.isnull())]
-    datas = datas[(datas['terrace_area']<3000) | (datas.terrace_area.isnull())]
-    datas = datas[(datas['garden_area']<100000) | (datas.garden_area.isnull())]
-    datas = datas[(datas['surface_of_the_land']<100000) | (datas.surface_of_the_land.isnull())]
-    datas = datas[(datas['number_of_facades']<5) | (datas.number_of_facades.isnull())]
+    #datas = datas[(datas['number_of_rooms']<100) | (datas.number_of_rooms.isnull())]
+    #datas = datas[(datas['area']<755000) | (datas.area.isnull())]
+    #datas = datas[(datas['terrace_area']<3000) | (datas.terrace_area.isnull())]
+    #datas = datas[(datas['garden_area']<100000) | (datas.garden_area.isnull())]
+    #datas = datas[(datas['surface_of_the_land']<100000) | (datas.surface_of_the_land.isnull())]
+    #datas = datas[(datas['number_of_facades']<5) | (datas.number_of_facades.isnull())]
     datas.drop(columns=['surface_area_of_the_plot_of_land', 'type_of_sale', 'subtype_of_property'], inplace=True)
     datas['garden_area'] = datas['garden_area'].where(datas['garden'] == 1, other=datas['garden'])
     datas['terrace_area'] = datas['terrace_area'].where(datas['terrace'] == 1, other=datas['terrace'])

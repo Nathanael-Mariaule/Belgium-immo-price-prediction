@@ -16,6 +16,7 @@ from sklearn.metrics import r2_score as r2 # evaluation metric
 from sklearn.metrics import mean_squared_error
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_absolute_error
+from sklearn.preprocessing import MinMaxScaler
 from pickle import dump
 
 
@@ -69,15 +70,17 @@ enc = ColumnTransformer(
         ], remainder='passthrough')
 
 
-pipe = make_pipeline(fillna, enc, StandardScaler())
+pipe = make_pipeline(fillna, enc, MinMaxScaler(), StandardScaler())
 pipe.fit(X)
 X_train = pipe.transform(X_train)
 X_val = pipe.transform(X_val)
 
 
 
-my_XGB_model = XGBRegressor(n_estimators=1000, learning_rate=0.05)
-my_XGB_model.fit(X_train, np.log(y_train), early_stopping_rounds=5, 
+my_XGB_model = XGBRegressor(n_estimators=3000, max_depth=11, min_child_weight=11,
+                           learning_rate=0.01, subsample=1, colsample_bytree=1,
+                           eval_metric='mae')
+my_XGB_model.fit(X_train, np.log(y_train), early_stopping_rounds=10, 
              eval_set=[(X_val, np.log(y_val))], verbose=False)
 
 X=pipe.transform(X)  
