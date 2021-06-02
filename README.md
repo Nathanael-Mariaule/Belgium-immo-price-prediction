@@ -17,6 +17,8 @@ Jupyter notebook with performance comparisons of various preprocessing technique
 Jupyter notebook with the hyperparameters tuning of the xgboost model
 ### model_loading.ipynb
 Example of use of our model
+### presentation.pdf
+short presentation of the working process and results
 ### preprocessor.pkl
 pipeline object from sklearn. Trained on our dataset
 ### model.json
