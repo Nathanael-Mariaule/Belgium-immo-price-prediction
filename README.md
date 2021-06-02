@@ -30,6 +30,5 @@ Used to get the median price for housing in each Belgian commune
 
 ## 3/ Improvements:
 Due to lack of time, the following steps remain to do
-
--test Feature engineering to improve the score of the model.
--deployment of the model
+- test Feature engineering to improve the score of the model.
+- deployment of the model
