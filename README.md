@@ -10,8 +10,8 @@ A python routine for preliminary cleaning of the dataset
 ### model_training.py
 Code for the training of the model
 ### app.py
-An streamlit app for price prediction using our model
-use the _streamlit run app.py_ in terminal to start the app.
+An streamlit app for price prediction using our model.
+Enter _streamlit run app.py_ in terminal to start the app.
 ### models_comparison.ipynb
 Jupyter notebook with performance comparisons of various model
 ### preprocessing_comparison.ipynb
